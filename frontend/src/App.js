@@ -11,38 +11,35 @@ const App = () => {
   const lastRefreshed = useRef(null);
 
   // Find matching offers
-  const findMatchingOffers = useCallback(
-    (exchangeResult) => {
-      const matchingOffers = [];
-      for (const property in exchangeResult) {
-        if (Object.hasOwnProperty.call(exchangeResult, property)) {
-          const tradeOffer = exchangeResult[property];
-          const listing = tradeOffer.listing;
-          const offers = listing.offers;
-          const matchingOffer = offers.find(
-            (offer) =>
-              offer.exchange.currency === "chaos" &&
-              offer.exchange.amount <= maxChaosAmount
-          );
-          if (matchingOffer) {
-            matchingOffers.push({
-              chaosPricePerCardMessage: getChaosPricePerCardMessage(
-                matchingOffer.exchange
-              ),
-              inGameWhisperMessage: getInGameWhisperMessage(
-                listing.account.lastCharacterName,
-                matchingOffer.exchange,
-                matchingOffer.item.stock
-              ),
-            });
-          }
+  const findMatchingOffers = useCallback((exchangeResult) => {
+    const matchingOffers = [];
+    for (const property in exchangeResult) {
+      if (Object.hasOwnProperty.call(exchangeResult, property)) {
+        const tradeOffer = exchangeResult[property];
+        const listing = tradeOffer.listing;
+        const offers = listing.offers;
+        const matchingOffer = offers.find(
+          (offer) =>
+            offer.exchange.currency === "chaos" &&
+            offer.exchange.amount <= maxChaosAmount
+        );
+        if (matchingOffer) {
+          matchingOffers.push({
+            chaosPricePerCardMessage: getChaosPricePerCardMessage(
+              matchingOffer.exchange
+            ),
+            inGameWhisperMessage: getInGameWhisperMessage(
+              listing.account.lastCharacterName,
+              matchingOffer.exchange,
+              matchingOffer.item.stock
+            ),
+          });
         }
       }
-      matchingOffers.sort((a, b) => a.chaosPricePerCard - b.chaosPricePerCard);
-      return matchingOffers;
-    },
-    [maxChaosAmount]
-  );
+    }
+    matchingOffers.sort((a, b) => a.chaosPricePerCard - b.chaosPricePerCard);
+    return matchingOffers;
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
