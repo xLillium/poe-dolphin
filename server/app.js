@@ -1,54 +1,66 @@
-const express = require('express');
-const axios = require('axios');
+const express = require("express");
+const cors = require("cors");
+
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-const port = process.env.PORT || 5000;
+app.use(cors());
 
-app.get('/api', async (req, res) => {
+const cache = new Map();
+const CACHE_TIME_MS = 2 * 60 * 1000; // 2 minutes
+
+const fetchEnlightenedTrades = async () => {
+  const EXCHANGE_API_URL =
+    "https://www.pathofexile.com/api/trade/exchange/Crucible";
+  const exchangeRequestConfig = {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      query: {
+        status: { option: "online" },
+        have: ["chaos"],
+        want: ["the-enlightened"],
+        minimum: 2,
+      },
+      sort: { have: "asc" },
+      engine: "new",
+    }),
+  };
+
+  const response = await fetch(EXCHANGE_API_URL, exchangeRequestConfig);
+
+  if (response.ok) {
+    return await response.json();
+  } else {
+    throw new Error(response.statusText);
+  }
+};
+
+const getCachedTrades = () => {
+  const cachedData = cache.get("trades");
+  if (cachedData && Date.now() - cachedData.timestamp < CACHE_TIME_MS) {
+    return cachedData.data;
+  }
+  return null;
+};
+
+const setCachedTrades = (data) => {
+  cache.set("trades", { data, timestamp: Date.now() });
+};
+
+app.get("/api/", async (req, res) => {
   try {
-    const response = await axios({
-      method: 'post',
-      url: 'https://www.pathofexile.com/api/trade/exchange/Crucible',
-      headers: {
-        'authority': 'www.pathofexile.com',
-        'accept': '*/*',
-        'accept-language': 'en-US,en;q=0.5',
-        'content-type': 'application/json',
-        'cookie': 'cf_clearance=fBXmiszCq2awVZ9HoNjP8EzZOrDxT58S7d4DR9hSppU-1681067074-0-160; POESESSID=4ef42adc41e392639ea028f4a3040f04',
-        'origin': 'https://www.pathofexile.com',
-        'referer': 'https://www.pathofexile.com/trade/exchange/Crucible',
-        'sec-ch-ua': '"Chromium";v="112", "Brave";v="112", "Not:A-Brand";v="99"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-origin',
-        'sec-gpc': '1',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
-        'x-requested-with': 'XMLHttpRequest',
-      },
-      data: {
-        query: {
-          status: {
-            option: 'online',
-          },
-          have: ['chaos'],
-          want: ['the-enlightened'],
-          minimum: 2,
-        },
-        sort: {
-          have: 'asc',
-        },
-        engine: 'new',
-      },
-    });
-    res.json(response.data);
+    let trades = getCachedTrades();
+    if (!trades) {
+      trades = await fetchEnlightenedTrades();
+      setCachedTrades(trades);
+    }
+    res.json(trades);
   } catch (error) {
-    console.error(error);
-    res.status(500).send('An error occurred while fetching data from Path of Exile API');
+    res.status(500).json({ message: error.message });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Express API listening at http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
