@@ -1,45 +1,49 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./App.css";
 import logo from "./poe-dolphin-logo.png";
+import Offer from "./components/Offer";
 
 const EXCHANGE_API_URL = `http://localhost:5000/api`;
 
 const App = () => {
   const [matchingOffers, setMatchingOffers] = useState([]);
   const [timeSinceLastRefresh, setTimeSinceLastRefresh] = useState(0);
-  const [maxChaosAmount, setMaxChaosAmount] = useState(100);
+  const [maxChaosAmount, setMaxChaosAmount] = useState(55);
   const lastRefreshed = useRef(null);
 
   // Find matching offers
-  const findMatchingOffers = useCallback((exchangeResult) => {
-    const matchingOffers = [];
-    for (const property in exchangeResult) {
-      if (Object.hasOwnProperty.call(exchangeResult, property)) {
-        const tradeOffer = exchangeResult[property];
-        const listing = tradeOffer.listing;
-        const offers = listing.offers;
-        const matchingOffer = offers.find(
-          (offer) =>
-            offer.exchange.currency === "chaos" &&
-            offer.exchange.amount <= maxChaosAmount
-        );
-        if (matchingOffer) {
-          matchingOffers.push({
-            chaosPricePerCardMessage: getChaosPricePerCardMessage(
-              matchingOffer.exchange
-            ),
-            inGameWhisperMessage: getInGameWhisperMessage(
-              listing.account.lastCharacterName,
-              matchingOffer.exchange,
-              matchingOffer.item.stock
-            ),
-          });
+  const findMatchingOffers = useCallback(
+    (exchangeResult) => {
+      const matchingOffers = [];
+      for (const property in exchangeResult) {
+        if (Object.hasOwnProperty.call(exchangeResult, property)) {
+          const tradeOffer = exchangeResult[property];
+          const listing = tradeOffer.listing;
+          const offers = listing.offers;
+          const matchingOffer = offers.find(
+            (offer) =>
+              offer.exchange.currency === "chaos" &&
+              offer.exchange.amount <= maxChaosAmount
+          );
+          if (matchingOffer) {
+            matchingOffers.push({
+              chaosPricePerCardMessage: getChaosPricePerCardMessage(
+                matchingOffer.exchange
+              ),
+              inGameWhisperMessage: getInGameWhisperMessage(
+                listing.account.lastCharacterName,
+                matchingOffer.exchange,
+                matchingOffer.item.stock
+              ),
+            });
+          }
         }
       }
-    }
-    matchingOffers.sort((a, b) => a.chaosPricePerCard - b.chaosPricePerCard);
-    return matchingOffers;
-  }, []);
+      matchingOffers.sort((a, b) => a.chaosPricePerCard - b.chaosPricePerCard);
+      return matchingOffers;
+    },
+    [maxChaosAmount]
+  );
 
   const fetchData = useCallback(async () => {
     try {
@@ -91,13 +95,8 @@ const App = () => {
     return `@${lastCharacterName} Hi, I'd like to buy your ${stock} The Enlightened for my ${totalChaosPrice} Chaos Orb in Crucible`;
   }
 
-  const copyToClipboard = (text) => {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
+  const updateMaxChaosAmount = (e) => {
+    setMaxChaosAmount(Number(e.target.value));
   };
 
   return (
@@ -106,34 +105,36 @@ const App = () => {
         <img src={logo} alt="PoE-Dolphin Logo" className="logo" />
       </header>
       <main>
-        <div>
-          <label htmlFor="max-chaos-amount">Max Chaos Amount:</label>
-          <input
-            id="max-chaos-amount"
-            type="number"
-            value={maxChaosAmount}
-            onChange={(e) => setMaxChaosAmount(Number(e.target.value))}
-          />
-        </div>
-        {lastRefreshed && (
-          <p>Last update: {timeSinceLastRefresh} seconds ago.</p>
-        )}
-        {matchingOffers.length > 0 ? (
-          matchingOffers.map((offer, index) => (
-            <div key={index} className="offer">
-              <p className="offer-text">{offer.chaosPricePerCardMessage}</p>
-              <p className="offer-text">{offer.inGameWhisperMessage}</p>{" "}
-              <button
-                className="button"
-                onClick={() => copyToClipboard(offer.inGameWhisperMessage)}
-              >
-                Copy to clipboard
-              </button>
+        <h1 className="page-title">PoE Dolphin</h1>
+        <div className="content">
+          <section className="controls-section">
+            <div className="controls">
+              <div className="max-chaos-input">
+                <label htmlFor="max-chaos-amount">Max Chaos Amount:</label>
+                <input
+                  id="max-chaos-amount"
+                  type="number"
+                  value={maxChaosAmount}
+                  onChange={updateMaxChaosAmount}
+                />
+              </div>
+              {lastRefreshed && (
+                <p className="last-update">
+                  Last update: {timeSinceLastRefresh} seconds ago.
+                </p>
+              )}
             </div>
-          ))
-        ) : (
-          <p>No matching trades found.</p>
-        )}
+          </section>
+          <section className="offers-section">
+            {matchingOffers.length > 0 ? (
+              matchingOffers.map((offer, index) => (
+                <Offer key={index} offer={offer} />
+              ))
+            ) : (
+              <p>No matching trades found.</p>
+            )}
+          </section>
+        </div>
       </main>
     </div>
   );
