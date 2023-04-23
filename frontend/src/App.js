@@ -3,43 +3,46 @@ import "./App.css";
 import logo from "./poe-dolphin-logo.png";
 
 const EXCHANGE_API_URL = `http://localhost:5000/api`;
-const MAX_CHAOS_AMOUNT = 100;
 
 const App = () => {
   const [matchingOffers, setMatchingOffers] = useState([]);
-  const lastRefreshed = useRef(null);
   const [timeSinceLastRefresh, setTimeSinceLastRefresh] = useState(0);
+  const [maxChaosAmount, setMaxChaosAmount] = useState(100);
+  const lastRefreshed = useRef(null);
 
   // Find matching offers
-  const findMatchingOffers = useCallback((exchangeResult) => {
-    const matchingOffers = [];
-    for (const property in exchangeResult) {
-      if (Object.hasOwnProperty.call(exchangeResult, property)) {
-        const tradeOffer = exchangeResult[property];
-        const listing = tradeOffer.listing;
-        const offers = listing.offers;
-        const matchingOffer = offers.find(
-          (offer) =>
-            offer.exchange.currency === "chaos" &&
-            offer.exchange.amount <= MAX_CHAOS_AMOUNT
-        );
-        if (matchingOffer) {
-          matchingOffers.push({
-            chaosPricePerCardMessage: getChaosPricePerCardMessage(
-              matchingOffer.exchange
-            ),
-            inGameWhisperMessage: getInGameWhisperMessage(
-              listing.account.lastCharacterName,
-              matchingOffer.exchange,
-              matchingOffer.item.stock
-            ),
-          });
+  const findMatchingOffers = useCallback(
+    (exchangeResult) => {
+      const matchingOffers = [];
+      for (const property in exchangeResult) {
+        if (Object.hasOwnProperty.call(exchangeResult, property)) {
+          const tradeOffer = exchangeResult[property];
+          const listing = tradeOffer.listing;
+          const offers = listing.offers;
+          const matchingOffer = offers.find(
+            (offer) =>
+              offer.exchange.currency === "chaos" &&
+              offer.exchange.amount <= maxChaosAmount
+          );
+          if (matchingOffer) {
+            matchingOffers.push({
+              chaosPricePerCardMessage: getChaosPricePerCardMessage(
+                matchingOffer.exchange
+              ),
+              inGameWhisperMessage: getInGameWhisperMessage(
+                listing.account.lastCharacterName,
+                matchingOffer.exchange,
+                matchingOffer.item.stock
+              ),
+            });
+          }
         }
       }
-    }
-    matchingOffers.sort((a, b) => a.chaosPricePerCard - b.chaosPricePerCard);
-    return matchingOffers;
-  }, []);
+      matchingOffers.sort((a, b) => a.chaosPricePerCard - b.chaosPricePerCard);
+      return matchingOffers;
+    },
+    [maxChaosAmount]
+  );
 
   const fetchData = useCallback(async () => {
     try {
@@ -106,11 +109,17 @@ const App = () => {
         <img src={logo} alt="PoE-Dolphin Logo" className="logo" />
       </header>
       <main>
+        <div>
+          <label htmlFor="max-chaos-amount">Max Chaos Amount:</label>
+          <input
+            id="max-chaos-amount"
+            type="number"
+            value={maxChaosAmount}
+            onChange={(e) => setMaxChaosAmount(Number(e.target.value))}
+          />
+        </div>
         {lastRefreshed && (
-          <p>
-            Last update: {timeSinceLastRefresh} seconds ago. (Data updates every
-            120 seconds)
-          </p>
+          <p>Last update: {timeSinceLastRefresh} seconds ago.</p>
         )}
         {matchingOffers.length > 0 ? (
           matchingOffers.map((offer, index) => (
